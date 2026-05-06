@@ -1,0 +1,52 @@
+.sentiment-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sentiment-options {
+  display: flex;
+  gap: 10px;
+}
+
+.sentiment-option {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.sentiment-option input {
+  display: none;
+}
+
+.sentiment-label {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.sentiment-label:hover {
+  border-color: var(--primary);
+}
+
+.sentiment-label.active.positive {
+  background: #f0fdf4;
+  border-color: #22c55e;
+  color: #166534;
+}
+
+.sentiment-label.active.neutral {
+  background: #fefce8;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.sentiment-label.active.negative {
+  background: #fef2f2;
+  border-color: #ef4444;
+  color: #991b1b;
+}

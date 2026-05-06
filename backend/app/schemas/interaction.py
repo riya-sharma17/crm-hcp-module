@@ -3,7 +3,6 @@ from typing import Optional, List
 from datetime import datetime
 
 
-# Schema for CREATING interaction via FORM
 class InteractionCreate(BaseModel):
     hcp_id: int
     hcp_name: str
@@ -20,13 +19,11 @@ class InteractionCreate(BaseModel):
     raw_chat_input: Optional[str] = None
 
 
-# Schema for CREATING interaction via CHAT
 class InteractionChatCreate(BaseModel):
-    message: str          # Raw chat message from user
+    message: str
     hcp_id: Optional[int] = None
 
 
-# Schema for UPDATING interaction
 class InteractionUpdate(BaseModel):
     interaction_type: Optional[str] = None
     interaction_date: Optional[datetime] = None
@@ -39,7 +36,6 @@ class InteractionUpdate(BaseModel):
     follow_up_actions: Optional[List[str]] = None
 
 
-# Schema for RETURNING interaction data
 class InteractionResponse(BaseModel):
     id: int
     hcp_id: int
@@ -64,8 +60,8 @@ class InteractionResponse(BaseModel):
         from_attributes = True
 
 
-# Schema for CHAT response
 class AgentChatResponse(BaseModel):
     message: str
     interaction: Optional[InteractionResponse] = None
+    extracted_form_data: Optional[dict] = {}
     suggested_followups: Optional[List[str]] = []

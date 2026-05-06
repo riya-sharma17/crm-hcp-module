@@ -1,5 +1,5 @@
 from langchain_core.tools import tool
-from typing import Optional
+from typing import Optional, List, Union
 
 
 @tool
@@ -10,15 +10,27 @@ def log_interaction(
     topics_discussed: str,
     sentiment: str,
     outcomes: Optional[str] = None,
-    attendees: Optional[list] = None,
-    materials_shared: Optional[list] = None,
-    samples_distributed: Optional[list] = None,
-    follow_up_actions: Optional[list] = None,
+    attendees: Optional[List[str]] = None,
+    materials_shared: Optional[List[str]] = None,
+    samples_distributed: Optional[List[str]] = None,
+    follow_up_actions: Optional[List[str]] = None,
 ) -> dict:
     """
     Log a new HCP interaction in the CRM system.
     Use this when the user wants to record a new interaction with an HCP.
+    attendees must be a list of strings, not a single string.
+    materials_shared must be a list of strings.
+    samples_distributed must be a list of strings.
+    follow_up_actions must be a list of strings.
     """
+    # Ensure all list fields are actually lists
+    def ensure_list(val):
+        if val is None:
+            return []
+        if isinstance(val, str):
+            return [val] if val else []
+        return val
+
     return {
         "tool": "log_interaction",
         "data": {
@@ -28,10 +40,10 @@ def log_interaction(
             "topics_discussed": topics_discussed,
             "sentiment": sentiment,
             "outcomes": outcomes,
-            "attendees": attendees or [],
-            "materials_shared": materials_shared or [],
-            "samples_distributed": samples_distributed or [],
-            "follow_up_actions": follow_up_actions or [],
+            "attendees": ensure_list(attendees),
+            "materials_shared": ensure_list(materials_shared),
+            "samples_distributed": ensure_list(samples_distributed),
+            "follow_up_actions": ensure_list(follow_up_actions),
             "logged_via": "chat"
         }
     }
@@ -116,7 +128,6 @@ def get_interaction_history(
     }
 
 
-# List of all tools
 tools = [
     log_interaction,
     edit_interaction,

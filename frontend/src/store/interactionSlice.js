@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import api from '../services/api'
 
-// Async actions
 export const createInteraction = createAsyncThunk(
   'interaction/create',
   async (interactionData) => {
@@ -47,6 +46,8 @@ const interactionSlice = createSlice({
     formLoading: false,
     successMessage: null,
     error: null,
+    // NEW - extracted form data from chat
+    extractedFormData: null,
   },
   reducers: {
     addChatMessage: (state, action) => {
@@ -62,10 +63,14 @@ const interactionSlice = createSlice({
       state.currentInteraction = null
       state.successMessage = null
       state.error = null
+      state.extractedFormData = null
+    },
+    // NEW - manually set extracted data
+    setExtractedFormData: (state, action) => {
+      state.extractedFormData = action.payload
     },
   },
   extraReducers: (builder) => {
-    // Create interaction
     builder
       .addCase(createInteraction.pending, (state) => {
         state.formLoading = true
@@ -82,13 +87,11 @@ const interactionSlice = createSlice({
         state.error = action.error.message
       })
 
-    // Fetch interactions
     builder
       .addCase(fetchInteractions.fulfilled, (state, action) => {
         state.interactions = action.payload
       })
 
-    // Update interaction
     builder
       .addCase(updateInteraction.fulfilled, (state, action) => {
         const index = state.interactions.findIndex(
@@ -100,7 +103,6 @@ const interactionSlice = createSlice({
         state.successMessage = 'Interaction updated successfully!'
       })
 
-    // Chat
     builder
       .addCase(sendChatMessage.pending, (state) => {
         state.chatLoading = true
@@ -112,6 +114,10 @@ const interactionSlice = createSlice({
           content: action.payload.message,
           interaction: action.payload.interaction,
         })
+        // AUTO FILL FORM - this is the key part
+        if (action.payload.extracted_form_data) {
+          state.extractedFormData = action.payload.extracted_form_data
+        }
         if (action.payload.interaction) {
           state.interactions.unshift(action.payload.interaction)
           state.successMessage = 'Interaction logged via chat!'
@@ -128,7 +134,8 @@ export const {
   addChatMessage,
   clearSuccess,
   clearError,
-  resetForm
+  resetForm,
+  setExtractedFormData
 } = interactionSlice.actions
 
 export default interactionSlice.reducer

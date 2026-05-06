@@ -12,37 +12,29 @@ from app.agent.tools import tools
 from app.agent.prompts import SYSTEM_PROMPT
 
 
-# State - what the agent remembers during a conversation
 class AgentState(TypedDict):
     messages: Annotated[List, operator.add]
     interaction_data: dict
     tool_results: dict
 
 
-# Initialize the LLM
 llm = ChatGroq(
     api_key=settings.GROQ_API_KEY,
-    model="gemma2-9b-it",
+    model="llama-3.3-70b-versatile",
     temperature=0.1,
 )
 
-# Bind tools to LLM
 llm_with_tools = llm.bind_tools(tools)
 
 
 def agent_node(state: AgentState) -> AgentState:
-    """Main agent node - decides what to do next"""
-
-    # Add system prompt to messages
     system_message = SystemMessage(
         content=SYSTEM_PROMPT.format(
             current_date=datetime.now().strftime("%Y-%m-%d")
         )
     )
-
     messages = [system_message] + state["messages"]
     response = llm_with_tools.invoke(messages)
-
     return {
         "messages": [response],
         "interaction_data": state.get("interaction_data", {}),
@@ -51,23 +43,15 @@ def agent_node(state: AgentState) -> AgentState:
 
 
 def should_continue(state: AgentState) -> str:
-    """Decide whether to use a tool or end"""
     last_message = state["messages"][-1]
-
-    # If AI wants to use a tool
     if hasattr(last_message, "tool_calls") and last_message.tool_calls:
         return "tools"
-
-    # Otherwise end
     return END
 
 
 def process_tool_results(state: AgentState) -> AgentState:
-    """Process results from tool calls"""
     last_message = state["messages"][-1]
     tool_results = state.get("tool_results", {})
-
-    # Store tool results in state
     if hasattr(last_message, "content"):
         try:
             content = json.loads(last_message.content)
@@ -75,7 +59,6 @@ def process_tool_results(state: AgentState) -> AgentState:
                 tool_results[content["tool"]] = content["data"]
         except Exception:
             pass
-
     return {
         "messages": state["messages"],
         "interaction_data": state.get("interaction_data", {}),
@@ -83,50 +66,80 @@ def process_tool_results(state: AgentState) -> AgentState:
     }
 
 
-# Build the graph
 tool_node = ToolNode(tools)
-
 graph_builder = StateGraph(AgentState)
-
-# Add nodes
 graph_builder.add_node("agent", agent_node)
 graph_builder.add_node("tools", tool_node)
 graph_builder.add_node("process_results", process_tool_results)
-
-# Set entry point
 graph_builder.set_entry_point("agent")
-
-# Add edges
 graph_builder.add_conditional_edges(
     "agent",
     should_continue,
-    {
-        "tools": "tools",
-        END: END
-    }
+    {"tools": "tools", END: END}
 )
-
 graph_builder.add_edge("tools", "process_results")
 graph_builder.add_edge("process_results", "agent")
-
-# Compile the graph
 agent_graph = graph_builder.compile()
 
 
 async def run_agent(message: str, conversation_history: list = []) -> dict:
-    """Run the agent with a user message"""
+    """Run agent AND extract form data from message"""
 
-    # Build initial state
+    # First — use LLM to extract structured data from message
+    extraction_prompt = f"""
+Extract interaction details from this message and return ONLY a JSON object.
+No explanation, no markdown, just the JSON.
+
+Message: "{message}"
+
+Return this exact JSON structure:
+{{
+    "hcp_name": "extracted name or null",
+    "interaction_type": "Meeting/Call/Email/Conference/Virtual or Meeting",
+    "topics_discussed": "extracted topics or null",
+    "sentiment": "Positive/Neutral/Negative or Neutral",
+    "outcomes": "extracted outcomes or null",
+    "follow_up_actions": ["list", "of", "followups"],
+    "materials_shared": [],
+    "samples_distributed": [],
+    "attendees": []
+}}
+IMPORTANT: follow_up_actions, materials_shared, samples_distributed 
+and attendees MUST always be arrays/lists, never strings.
+"""
+
+    extraction_llm = ChatGroq(
+        api_key=settings.GROQ_API_KEY,
+       model="llama-3.3-70b-versatile",
+        temperature=0,
+    )
+
+    extraction_response = extraction_llm.invoke([
+        HumanMessage(content=extraction_prompt)
+    ])
+
+    extracted_data = {}
+    try:
+        raw = extraction_response.content.strip()
+        # Clean markdown if present
+        if "```" in raw:
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        extracted_data = json.loads(raw.strip())
+    except Exception as e:
+        print(f"Extraction error: {e}")
+        extracted_data = {}
+
+    # Then — run the agent for conversational response
     initial_state = {
         "messages": conversation_history + [HumanMessage(content=message)],
-        "interaction_data": {},
+        "interaction_data": extracted_data,
         "tool_results": {}
     }
 
-    # Run the graph
     result = await agent_graph.ainvoke(initial_state)
 
-    # Extract final response
     final_message = result["messages"][-1]
     response_text = final_message.content if hasattr(
         final_message, "content"
@@ -135,5 +148,5 @@ async def run_agent(message: str, conversation_history: list = []) -> dict:
     return {
         "response": response_text,
         "tool_results": result.get("tool_results", {}),
-        "interaction_data": result.get("interaction_data", {})
+        "interaction_data": extracted_data
     }
