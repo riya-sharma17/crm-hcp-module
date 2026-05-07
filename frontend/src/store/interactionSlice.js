@@ -109,15 +109,23 @@ const interactionSlice = createSlice({
       })
       .addCase(sendChatMessage.fulfilled, (state, action) => {
         state.chatLoading = false
+
+        // Add AI response to chat
         state.chatMessages.push({
           role: 'assistant',
           content: action.payload.message,
           interaction: action.payload.interaction,
         })
-        // AUTO FILL FORM - this is the key part
-        if (action.payload.extracted_form_data) {
-          state.extractedFormData = action.payload.extracted_form_data
+
+        // AUTO FILL FORM
+        const extracted = action.payload.extracted_form_data
+        console.log('Extracted form data:', extracted)
+
+        if (extracted && Object.keys(extracted).length > 0) {
+          state.extractedFormData = extracted
+          console.log('Form data set in Redux:', state.extractedFormData)
         }
+
         if (action.payload.interaction) {
           state.interactions.unshift(action.payload.interaction)
           state.successMessage = 'Interaction logged via chat!'

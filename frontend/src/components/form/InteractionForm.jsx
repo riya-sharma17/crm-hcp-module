@@ -42,12 +42,10 @@ function InteractionForm() {
     materials_shared: [],
     samples_distributed: [],
   })
-
- useEffect(() => {
-  console.log('extractedFormData changed:', extractedFormData)
+useEffect(() => {
+  console.log('extractedFormData:', extractedFormData)
   if (!extractedFormData) return
-
-  console.log('Filling form with:', extractedFormData)
+  if (Object.keys(extractedFormData).length === 0) return
 
   setForm((prev) => ({
     ...prev,
@@ -55,28 +53,21 @@ function InteractionForm() {
       extractedFormData.interaction_type || prev.interaction_type,
     topics_discussed:
       extractedFormData.topics_discussed || prev.topics_discussed,
-    sentiment: extractedFormData.sentiment || prev.sentiment,
-    outcomes: extractedFormData.outcomes || prev.outcomes,
+    sentiment:
+      extractedFormData.sentiment || prev.sentiment,
+    outcomes:
+      extractedFormData.outcomes || prev.outcomes,
     follow_up_actions:
-      extractedFormData.follow_up_actions?.length
+      extractedFormData.follow_up_actions?.length > 0
         ? extractedFormData.follow_up_actions
         : prev.follow_up_actions,
-    materials_shared:
-      extractedFormData.materials_shared?.length
-        ? extractedFormData.materials_shared
-        : prev.materials_shared,
-    samples_distributed:
-      extractedFormData.samples_distributed?.length
-        ? extractedFormData.samples_distributed
-        : prev.samples_distributed,
     attendees:
-      extractedFormData.attendees?.length
+      extractedFormData.attendees?.length > 0
         ? extractedFormData.attendees.join(', ')
         : prev.attendees,
   }))
 
   if (extractedFormData.hcp_name) {
-    console.log('Searching HCP:', extractedFormData.hcp_name)
     dispatch(searchHCPs(extractedFormData.hcp_name))
   }
 }, [extractedFormData])

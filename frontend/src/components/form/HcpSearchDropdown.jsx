@@ -13,6 +13,7 @@ function HCPSearchDropdown() {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef(null)
 
+  // Search when query changes
   useEffect(() => {
     if (query.length >= 2) {
       dispatch(searchHCPs(query))
@@ -22,6 +23,7 @@ function HCPSearchDropdown() {
     }
   }, [query])
 
+  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -31,6 +33,13 @@ function HCPSearchDropdown() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  // Auto select first HCP when search results arrive from chat
+  useEffect(() => {
+    if (searchResults.length > 0 && !selectedHCP && query.length >= 2) {
+      handleSelect(searchResults[0])
+    }
+  }, [searchResults])
 
   const handleSelect = (hcp) => {
     dispatch(setSelectedHCP(hcp))
